@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Crear .env desde .env.example
+        run: cp .env.example .env
+
+      - name: Construir las imágenes
+        run: docker compose build
+
+      - name: Levantar los servicios
+        run: docker compose up -d --wait
+
+      - name: Prueba de ida y vuelta entre contenedores
+        run: |
+          curl -fsS -X POST localhost:5000/notes \
+            -H 'Content-Type: application/json' -d '{"text":"hola desde CI"}'
+          curl -fsS localhost:5000/notes | grep "hola desde CI"
+          curl -fsS localhost:5000/summary
+
+      - name: Logs (si falla)
+        if: failure()
+        run: docker compose logs
+
+      - name: Apagar
+        if: always()
+        run: docker compose down -v
