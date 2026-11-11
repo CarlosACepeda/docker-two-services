@@ -1,0 +1,41 @@
+services:
+  data-service:
+    build: ./data-service
+    container_name: data-service
+    environment:
+      API_TOKEN: ${API_TOKEN}
+      DATA_PORT: ${DATA_PORT}
+      DB_PATH: /data/data.db
+    expose:
+      - "${DATA_PORT}"        # solo accesible dentro de la red de Docker
+    volumes:
+      - sqlite-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${DATA_PORT}/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - app-net
+
+  app:
+    build: ./app
+    container_name: app
+    environment:
+      API_TOKEN: ${API_TOKEN}
+      APP_PORT: ${APP_PORT}
+      DATA_SERVICE_URL: ${DATA_SERVICE_URL}
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    depends_on:
+      data-service:
+        condition: service_healthy
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  sqlite-data:
